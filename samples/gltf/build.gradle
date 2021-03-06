@@ -54,4 +54,5 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
 
     implementation("com.gorisse.thomas.sceneform:sceneform:1.18.+")
+    implementation project(path: ':core')
 }

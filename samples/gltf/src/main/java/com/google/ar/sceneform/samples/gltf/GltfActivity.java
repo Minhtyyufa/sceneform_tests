@@ -47,6 +47,7 @@ import com.google.ar.sceneform.rendering.ShapeFactory;
 import com.google.ar.sceneform.ux.ArFragment;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -62,6 +63,7 @@ public class GltfActivity extends AppCompatActivity {
     private AnchorNode currAnchorNode = null;
     private ArFragment arFragment;
     private Renderable renderable;
+    private List<AnchorNode> anchors = new ArrayList<AnchorNode>();
 
     private static class AnimationInstance {
         Animator animator;
@@ -90,6 +92,59 @@ public class GltfActivity extends AppCompatActivity {
                     new Color(1, 0, 1, 1),
                     new Color(1, 1, 1, 1));
     private int nextColor = 0;
+
+    private void addAnchor(HitResult hitResult) {
+        Anchor anchor = hitResult.createAnchor();
+        AnchorNode anchorNode = new AnchorNode(anchor);
+        anchorNode.setParent(arFragment.getArSceneView().getScene());
+        anchors.add(anchorNode);
+    }
+
+    private void renderPath(){
+        if(anchors.size() < 2)
+            return;
+        else {
+            for(int i = 1; i < anchors.size(); i++){
+                renderLineBetweenTwoAnchorNodes(anchors.get(i - 1), anchors.get(i));
+            }
+        }
+    }
+
+    private void renderLineBetweenTwoAnchorNodes(AnchorNode prev, AnchorNode curr){
+        Vector3 point1 = curr.getWorldPosition();
+        Vector3 point2 = prev.getWorldPosition();
+
+        Node lineNode = new Node();
+
+    /* First, find the vector extending between the two points and define a look rotation in terms of this
+        Vector. */
+
+        final Vector3 difference = Vector3.subtract(point1, point2);
+        final Vector3 directionFromTopToBottom = difference.normalized();
+        final Quaternion rotationFromAToB =
+                Quaternion.lookRotation(directionFromTopToBottom, Vector3.up());
+
+         /* Then, create a rectangular prism, using ShapeFactory.makeCube() and use the difference vector
+         to extend to the necessary length.  */
+        MaterialFactory.makeOpaqueWithColor(getApplicationContext(), new Color(0, 255, 244))
+                .thenAccept(
+                        material -> {
+                            /* Then, create a rectangular prism, using ShapeFactory.makeCube() and use the difference vector
+                                   to extend to the necessary length.  */
+                            ModelRenderable model = ShapeFactory.makeCube(
+                                    new Vector3(.01f, .01f, difference.length()),
+                                    Vector3.zero(), material);
+                            /* Last, set the world rotation of the node to the rotation calculated earlier and set the world position to
+                                   the midpoint between the given points . */
+                            Node node = new Node();
+                            node.setParent(curr);
+                            node.setRenderable(model);
+                            node.setWorldPosition(Vector3.add(point1, point2).scaled(.5f));
+                            node.setWorldRotation(rotationFromAToB);
+                        }
+                );
+
+    }
 
     public void lineBetweenPoints(HitResult hitResult) {
         Anchor anchor = hitResult.createAnchor();
@@ -178,7 +233,9 @@ public class GltfActivity extends AppCompatActivity {
                     if (renderable == null) {
                         return;
                     }
-                    lineBetweenPoints(hitResult);
+                     //lineBetweenPoints(hitResult);
+                    addAnchor(hitResult);
+                    renderPath();
                     /*
                     // Create the Anchor.
                     Anchor anchor = hitResult.createAnchor();
